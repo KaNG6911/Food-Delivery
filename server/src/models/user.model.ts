@@ -14,7 +14,7 @@
 //   models["Users"] || model("Users", UserSchema);
 
 import mongoose, { Schema, Document } from "mongoose";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -111,10 +111,8 @@ const userSchema = new Schema<IUser>(
 );
 
 // Password hash хийх
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) {
-    next();
-  }
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
@@ -129,12 +127,16 @@ userSchema.methods.matchPassword = async function (
 
 // JWT token үүсгэх
 userSchema.methods.getSignedJwtToken = function (): string {
+  const secret = process.env.JWT_SECRET!;
+  const expire = process.env.JWT_EXPIRE || "7d";
+
   return jwt.sign(
-    { id: this._id, role: this.role },
-    process.env.JWT_SECRET as string,
     {
-      expiresIn: process.env.JWT_EXPIRE as string,
+      id: this._id.toString(),
+      role: this.role,
     },
+    secret,
+    { expiresIn: expire as any },
   );
 };
 
